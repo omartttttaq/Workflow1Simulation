@@ -1,0 +1,4 @@
+"Guess the word !":
+You need just python (do not use online python) .
+"Guess the number !":
+You need to download tkinter (preferably in cmd) and python .

@@ -1,0 +1,5 @@
+"Guess the word !":
+Verify that you import "random" before playing ,
+⚠️ Please run the code in the terminal of the interface where you use python .
+"Guess the number !":
+Verify that you import "tkinter" as tk and "random" before playing . 
