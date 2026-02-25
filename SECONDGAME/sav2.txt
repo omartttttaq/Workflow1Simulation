@@ -1,0 +1,134 @@
+import pygame
+from settings import *
+
+class Player(pygame.sprite.Sprite):
+    def __init__(self, pos, groups, obstacle_sprites, create_attack, destroy_attack, create_magic, save_data):
+        super().__init__(groups)
+        
+        # 1. CHARGEMENT ET REDIMENSIONNEMENT DE TON IMAGE
+        try:
+            # Assure-toi que le fichier s'appelle link.png dans ce dossier
+            self.image = pygame.image.load('graphics/player/link.png').convert_alpha()
+            # Redimensionnement aux dimensions demandées : 55x64
+            self.image = pygame.transform.scale(self.image, (55, 64))
+        except:
+            # Image de secours si le fichier n'est pas trouvé
+            self.image = pygame.Surface((55, 64))
+            self.image.fill('green')
+            print("Erreur : Le fichier 'graphics/player/link.png' est introuvable.")
+
+        self.rect = self.image.get_rect(topleft=pos)
+        self.hitbox = self.rect.inflate(-10, -10)
+
+        # 2. STATS (Correction du crash rubies inclus)
+        self.stats = save_data['stats']
+        self.health = self.stats['health']
+        self.energy = self.stats['magic'] # Réservoir pour la magie
+        self.exp = save_data['exp']
+        self.speed = self.stats['speed']
+        self.rubies = save_data.get('rubies', 0)
+
+        # 3. MOUVEMENT ET ÉTATS
+        self.direction = pygame.math.Vector2()
+        self.status = 'down'
+        self.attacking = False
+        self.attack_cooldown = 400
+        self.attack_time = None
+        self.obstacle_sprites = obstacle_sprites
+
+        # 4. FONCTIONS DE COMBAT
+        self.create_attack = create_attack
+        self.destroy_attack = destroy_attack
+        self.create_magic = create_magic
+        
+        # Cooldown spécifique à la magie
+        self.can_cast = True
+        self.magic_time = None
+        self.magic_cooldown = 600
+
+    def input(self):
+        if not self.attacking:
+            keys = pygame.key.get_pressed()
+
+            # --- Déplacements ---
+            if keys[pygame.K_UP]:
+                self.direction.y = -1
+                self.status = 'up'
+            elif keys[pygame.K_DOWN]:
+                self.direction.y = 1
+                self.status = 'down'
+            else:
+                self.direction.y = 0
+
+            if keys[pygame.K_RIGHT]:
+                self.direction.x = 1
+                self.status = 'right'
+            elif keys[pygame.K_LEFT]:
+                self.direction.x = -1
+                self.status = 'left'
+            else:
+                self.direction.x = 0
+
+            # --- Attaque à l'épée (Espace) ---
+            if keys[pygame.K_SPACE]:
+                self.attacking = True
+                self.attack_time = pygame.time.get_ticks()
+                self.create_attack()
+
+            # --- Utilisation de la MAGIE (Ctrl Gauche) ---
+            if keys[pygame.K_LCTRL] and self.can_cast:
+                # Coût de la magie (ex: 20 points)
+                magic_cost = 20
+                if self.energy >= magic_cost:
+                    self.attacking = True
+                    self.can_cast = False
+                    self.attack_time = pygame.time.get_ticks()
+                    self.magic_time = pygame.time.get_ticks()
+                    
+                    # Déclenchement du sort
+                    self.create_magic('flame', 15, magic_cost)
+                    self.energy -= magic_cost # Consommation de l'énergie
+
+    def cooldowns(self):
+        current_time = pygame.time.get_ticks()
+
+        # Cooldown attaque physique
+        if self.attacking:
+            if current_time - self.attack_time >= self.attack_cooldown:
+                self.attacking = False
+                self.destroy_attack()
+
+        # Cooldown régénération magie
+        if not self.can_cast:
+            if current_time - self.magic_time >= self.magic_cooldown:
+                self.can_cast = True
+
+    def move(self, speed):
+        if self.direction.magnitude() != 0:
+            self.direction = self.direction.normalize()
+
+        self.hitbox.x += self.direction.x * speed
+        self.collision('horizontal')
+        self.hitbox.y += self.direction.y * speed
+        self.collision('vertical')
+        self.rect.center = self.hitbox.center
+
+    def collision(self, direction):
+        for sprite in self.obstacle_sprites:
+            if sprite.hitbox.colliderect(self.hitbox):
+                if direction == 'horizontal':
+                    if self.direction.x > 0: self.hitbox.right = sprite.hitbox.left
+                    if self.direction.x < 0: self.hitbox.left = sprite.hitbox.right
+                if direction == 'vertical':
+                    if self.direction.y > 0: self.hitbox.bottom = sprite.hitbox.top
+                    if self.direction.y < 0: self.hitbox.top = sprite.hitbox.bottom
+
+    def update(self):
+        self.input()
+        self.cooldowns()
+        
+        # Récupération automatique et lente de l'énergie magique
+        if self.energy < self.stats['magic']:
+            self.energy += 0.1
+            
+        self.move(self.speed)

@@ -1,0 +1,19 @@
+{
+    "player_name": "Link",
+    "current_level": 4,
+    "rubies": 9,
+    "exp": 4700,
+    "talent_points": 0,
+    "sword_level": 1,
+    "stats": {
+        "health": 100,
+        "energy": 60,
+        "attack": 10,
+        "speed": 5,
+        "magic": 50
+    },
+    "unlocked_spells": [
+        "fireball"
+    ],
+    "life_hearts": 2
+}
